@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id           String   @id @default(uuid())
+  name         String
+  hostname     String
+  port         Int      @default(22)
+  type         String   // "mikrotik" | "linux"
+  username     String
+  password     String   // Encrypted (AES-256-GCM)
+  group        String?
+  zabbixHostId String?
+  isActive     Boolean  @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tasks        Task[]
+}
+
+model Task {
+  id               String        @id @default(uuid())
+  taskNumber       Int           @unique
+  deviceId         String?
+  device           Device?       @relation(fields: [deviceId], references: [id])
+  source           String        // "whatsapp" | "zabbix" | "dashboard"
+  status           String        @default("pending") // pending|diagnosing|awaiting_approval|executing|completed|failed|cancelled
+  originalMessage  String
+  diagnosis        String?
+  proposedSolution String?
+  adminResponse    String?       // "yes" | "no" | null
+  executionResult  String?
+  agentUsed        String?       // "support" | "mikrotik" | "linux"
+  priority         String        @default("medium") // low|medium|high|critical
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  messages         TaskMessage[]
+}
+
+model TaskMessage {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "agent" | "system"
+  content   String
+  agentName String?
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+model ChatSession {
+  id        String        @id @default(uuid())
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String      // "user" | "assistant"
+  content   String
+  agentUsed String?
+  toolCalls String?     // JSON string with tools used
+  createdAt DateTime    @default(now())
+}

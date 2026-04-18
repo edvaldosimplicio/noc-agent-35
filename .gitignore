@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+prisma/data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Frontend build (optional: remove if you want to commit the build)
+frontend/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Agent framework (development tools, not needed for the app)
+.agent/
+.gemini/
+
+# Misc
+*.tgz
+.cache/

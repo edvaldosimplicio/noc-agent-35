@@ -1,0 +1,188 @@
+import { Router } from 'express';
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
+import SupportAgent from '../agents/support-agent.js';
+import MikrotikAgent from '../agents/mikrotik-agent.js';
+import LinuxAgent from '../agents/linux-agent.js';
+import * as taskService from '../services/task.service.js';
+import * as evolutionService from '../services/evolution.service.js';
+import { parseZabbixAlert, formatAlertMessage } from '../services/zabbix.service.js';
+
+const router = Router();
+
+const supportAgent = new SupportAgent();
+const mikrotikAgent = new MikrotikAgent();
+const linuxAgent = new LinuxAgent();
+
+async function processAgentRequest(classification, task) {
+  const { deviceId, deviceType, deviceName, originalRequest } = classification;
+
+  await taskService.updateTask(task.id, { status: 'diagnosing', deviceId, agentUsed: deviceType });
+  await taskService.addTaskMessage(task.id, 'system', `Encaminhado para Agent ${deviceType.toUpperCase()}`);
+
+  const agent = deviceType === 'mikrotik' ? mikrotikAgent : linuxAgent;
+
+  try {
+    const result = await agent.diagnose(deviceId, deviceName, originalRequest, task.taskNumber);
+
+    await taskService.updateTask(task.id, {
+      status: 'awaiting_approval',
+      diagnosis: result.text,
+      proposedSolution: result.text,
+    });
+
+    await taskService.addTaskMessage(task.id, 'agent', result.text, deviceType);
+
+    return result.text;
+  } catch (err) {
+    const errorMsg = `❌ Erro no diagnóstico: ${err.message}`;
+    await taskService.updateTask(task.id, { status: 'failed', diagnosis: errorMsg });
+    await taskService.addTaskMessage(task.id, 'system', errorMsg);
+    return errorMsg;
+  }
+}
+
+// Evolution API Webhook (WhatsApp messages)
+router.post('/evolution', async (req, res) => {
+  res.status(200).send('OK');
+
+  try {
+    const parsed = evolutionService.parseIncomingMessage(req.body);
+    if (!parsed || !parsed.text || parsed.isFromMe) return;
+
+    const isAuthorized = await evolutionService.isAuthorizedNumber(parsed.from);
+    if (!isAuthorized) {
+      logger.warn(`Unauthorized WhatsApp number: ${parsed.from}`);
+      return;
+    }
+
+    logger.info(`WhatsApp message from ${parsed.from}: ${parsed.text}`);
+
+    // Check if it's a task approval response
+    const taskApprovalMatch = parsed.text.match(/#?TASK-?(\d+)/i);
+    const isYes = /\b(sim|yes|s|y|confirma|aprovar|aplica)\b/i.test(parsed.text);
+    const isNo = /\b(não|nao|no|n|cancela|cancelar|rejeitar)\b/i.test(parsed.text);
+
+    if (taskApprovalMatch && (isYes || isNo)) {
+      const taskNumber = parseInt(taskApprovalMatch[1]);
+      const task = await taskService.processApproval(taskNumber, isYes);
+
+      if (!task) {
+        await evolutionService.sendWhatsAppMessage(parsed.from,
+          `⚠️ Task #${taskNumber} não encontrada ou não está aguardando aprovação.`
+        );
+        return;
+      }
+
+      if (isYes) {
+        await evolutionService.sendWhatsAppMessage(parsed.from,
+          `✅ Task #${taskNumber} aprovada! Executando solução...`
+        );
+        await taskService.addTaskMessage(task.id, 'user', 'Solução APROVADA pelo admin');
+
+        const agent = task.agentUsed === 'mikrotik' ? mikrotikAgent : linuxAgent;
+        const result = await agent.executeSolution(
+          task.deviceId, task.device?.name || 'Unknown', task.proposedSolution, taskNumber
+        );
+
+        await taskService.updateTask(task.id, {
+          status: 'completed',
+          executionResult: result.text,
+        });
+        await taskService.addTaskMessage(task.id, 'agent', result.text, task.agentUsed);
+        await evolutionService.sendWhatsAppMessage(parsed.from, result.text);
+      } else {
+        await taskService.addTaskMessage(task.id, 'user', 'Solução REJEITADA pelo admin');
+        await evolutionService.sendWhatsAppMessage(parsed.from,
+          `❌ Task #${taskNumber} cancelada. Nenhuma ação foi tomada.`
+        );
+      }
+      return;
+    }
+
+    // New request → classify and process
+    const task = await taskService.createTask({
+      source: 'whatsapp',
+      originalMessage: parsed.text,
+    });
+
+    await taskService.addTaskMessage(task.id, 'user', parsed.text);
+
+    const classification = await supportAgent.classify(parsed.text, 'whatsapp');
+
+    if (classification.action === 'route_to_specialist') {
+      const response = await processAgentRequest(classification, task);
+      await evolutionService.sendWhatsAppMessage(parsed.from, response);
+    } else {
+      const msg = classification.message || 'Não consegui identificar o dispositivo. Verifique se ele está cadastrado no sistema.';
+      await taskService.updateTask(task.id, { status: 'failed', diagnosis: msg });
+      await taskService.addTaskMessage(task.id, 'agent', msg, 'support');
+      await evolutionService.sendWhatsAppMessage(parsed.from, msg);
+    }
+  } catch (err) {
+    logger.error(`Webhook evolution error: ${err.message}`, { stack: err.stack });
+  }
+});
+
+// Zabbix Webhook
+router.post('/zabbix', async (req, res) => {
+  const token = req.headers['x-zabbix-token'] || req.query.token;
+  
+  // Read expected token from database
+  let expectedToken = config.zabbix.webhookToken;
+  try {
+    const prisma = (await import('../database/client.js')).default;
+    const { decrypt } = await import('../utils/crypto.js');
+    const setting = await prisma.settings.findUnique({ where: { key: 'zabbix_webhook_token' } });
+    if (setting && setting.value) {
+      expectedToken = setting.encrypted ? decrypt(setting.value) : setting.value;
+    }
+  } catch (err) {
+    logger.error(`Error reading zabbix token from DB: ${err.message}`);
+  }
+
+  if (expectedToken && token !== expectedToken) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  res.status(200).json({ status: 'received' });
+
+  try {
+    const alert = parseZabbixAlert(req.body);
+    if (!alert) return;
+
+    logger.info(`Zabbix alert: ${alert.host} - ${alert.trigger}`);
+
+    const task = await taskService.createTask({
+      source: 'zabbix',
+      originalMessage: formatAlertMessage(alert),
+      priority: alert.priority,
+    });
+
+    await taskService.addTaskMessage(task.id, 'system', `Alerta Zabbix: ${alert.trigger}`);
+
+    // Try to find the device by hostname or zabbixHostId
+    const classificationMsg = `Alerta do Zabbix:
+Host: ${alert.host}
+${alert.hostId ? `Zabbix Host ID: ${alert.hostId}` : ''}
+Trigger: ${alert.trigger}
+Severidade: ${alert.severity}
+${alert.itemName ? `Item: ${alert.itemName} = ${alert.itemValue}` : ''}
+
+Identifique o dispositivo e encaminhe para diagnóstico.`;
+
+    const classification = await supportAgent.classify(classificationMsg, 'zabbix');
+
+    if (classification.action === 'route_to_specialist') {
+      const response = await processAgentRequest(classification, task);
+      await evolutionService.sendToAdmin(response);
+    } else {
+      const msg = `⚠️ Alerta Zabbix recebido mas dispositivo não identificado:\n${formatAlertMessage(alert)}`;
+      await evolutionService.sendToAdmin(msg);
+    }
+  } catch (err) {
+    logger.error(`Webhook zabbix error: ${err.message}`, { stack: err.stack });
+  }
+});
+
+export default router;

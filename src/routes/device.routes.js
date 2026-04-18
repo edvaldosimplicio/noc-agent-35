@@ -1,0 +1,61 @@
+import { Router } from 'express';
+import * as deviceService from '../services/device.service.js';
+
+const router = Router();
+
+router.get('/', async (req, res, next) => {
+  try {
+    const devices = await deviceService.getAllDevices();
+    res.json({ success: true, data: devices });
+  } catch (err) { next(err); }
+});
+
+router.get('/:id', async (req, res, next) => {
+  try {
+    const device = await deviceService.getDeviceById(req.params.id);
+    if (!device) return res.status(404).json({ success: false, error: 'Device not found' });
+    res.json({ success: true, data: { ...device, password: '••••••••' } });
+  } catch (err) { next(err); }
+});
+
+router.post('/', async (req, res, next) => {
+  try {
+    const { name, hostname, port, type, username, password, group, zabbixHostId, notes } = req.body;
+    if (!name || !hostname || !type || !username || !password) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: name, hostname, type, username, password' });
+    }
+    if (!['mikrotik', 'linux'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Type must be "mikrotik" or "linux"' });
+    }
+    const device = await deviceService.createDevice({
+      name, hostname, port: port || 22, type, username, password,
+      group: group || null, zabbixHostId: zabbixHostId || null, notes: notes || null,
+    });
+    res.status(201).json({ success: true, data: device });
+  } catch (err) { next(err); }
+});
+
+router.put('/:id', async (req, res, next) => {
+  try {
+    const device = await deviceService.updateDevice(req.params.id, req.body);
+    res.json({ success: true, data: device });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await deviceService.deleteDevice(req.params.id);
+    res.json({ success: true, message: 'Device deleted' });
+  } catch (err) { next(err); }
+});
+
+router.post('/:id/test', async (req, res, next) => {
+  try {
+    const result = await deviceService.testDeviceConnection(req.params.id);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+export default router;

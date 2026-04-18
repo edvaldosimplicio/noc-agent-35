@@ -1,0 +1,110 @@
+import { useState, useEffect } from 'react';
+import { Server, CheckCircle, Clock, AlertTriangle, Activity } from 'lucide-react';
+import { api } from '../lib/api.js';
+import { StatusBadge, PriorityBadge } from '../components/StatusBadge.jsx';
+
+export default function Dashboard() {
+  const [stats, setStats] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.getTaskStats(), api.getTasks({ limit: 10 })])
+      .then(([statsRes, tasksRes]) => {
+        setStats(statsRes.data);
+        setTasks(tasksRes.data);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="loading-screen"><div className="spinner" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>Dashboard</h2>
+        <p>Visão geral do sistema de monitoramento NOC</p>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon cyan"><Activity size={24} /></div>
+          <div>
+            <div className="stat-value">{stats?.total || 0}</div>
+            <div className="stat-label">Total de Tasks</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon amber"><Clock size={24} /></div>
+          <div>
+            <div className="stat-value">{(stats?.pending || 0) + (stats?.diagnosing || 0)}</div>
+            <div className="stat-label">Em Andamento</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon blue"><AlertTriangle size={24} /></div>
+          <div>
+            <div className="stat-value">{stats?.awaiting || 0}</div>
+            <div className="stat-label">Aguardando Aprovação</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon green"><CheckCircle size={24} /></div>
+          <div>
+            <div className="stat-value">{stats?.completedToday || 0}</div>
+            <div className="stat-label">Resolvidas Hoje</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">Últimas Tasks</span>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div className="empty-state">
+            <Server size={48} />
+            <p>Nenhuma task ainda. As tasks aparecerão quando alertas do Zabbix ou mensagens do WhatsApp forem recebidos.</p>
+          </div>
+        ) : (
+          <div className="table-container" style={{ border: 'none' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Fonte</th>
+                  <th>Dispositivo</th>
+                  <th>Status</th>
+                  <th>Prioridade</th>
+                  <th>Criada</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map(task => (
+                  <tr key={task.id}>
+                    <td style={{ color: 'var(--primary)', fontWeight: 600 }}>#{task.taskNumber}</td>
+                    <td>
+                      <span className={`badge ${task.source === 'zabbix' ? 'badge-warning' : task.source === 'whatsapp' ? 'badge-success' : 'badge-info'}`}>
+                        {task.source}
+                      </span>
+                    </td>
+                    <td>{task.device?.name || '—'}</td>
+                    <td><StatusBadge status={task.status} /></td>
+                    <td><PriorityBadge priority={task.priority} /></td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      {new Date(task.createdAt).toLocaleString('pt-BR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
