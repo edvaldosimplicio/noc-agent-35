@@ -1,110 +1,108 @@
-<![CDATA[# 🛡️ NOC Agent 35
+# NOC Agent 35
 
 **AI-powered autonomous NOC monitoring system** — Diagnose and remediate network/server incidents using Claude AI agents, with WhatsApp approval workflows and Zabbix integration.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" alt="React" />
-  <img src="https://img.shields.io/badge/Claude_AI-Anthropic-8B5CF6?logo=anthropic&logoColor=white" alt="Claude" />
-  <img src="https://img.shields.io/badge/SQLite-Prisma-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
-  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License" />
-</p>
+![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Claude AI](https://img.shields.io/badge/Claude_AI-Anthropic-8B5CF6?logo=anthropic&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Prisma-003B57?logo=sqlite&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [Architecture](#-architecture)
-- [Features](#-features)
-- [Requirements](#-requirements)
-- [Installation](#-installation)
-- [Configuration](#️-configuration)
-- [Database Setup](#-database-setup)
-- [Running the Application](#-running-the-application)
-- [Production Deployment (PM2)](#-production-deployment-pm2)
-- [Integrations](#-integrations)
-- [API Endpoints](#-api-endpoints)
-- [Project Structure](#-project-structure)
-- [Security](#-security)
-- [Troubleshooting](#-troubleshooting)
-- [License](#-license)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Database Setup](#database-setup)
+- [Running the Application](#running-the-application)
+- [Production Deployment (PM2)](#production-deployment-pm2)
+- [Integrations](#integrations)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#project-structure)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ---
 
-## 🌐 Overview
+## Overview
 
 NOC Agent 35 is an intelligent Network Operations Center system that uses **multi-agent AI architecture** to autonomously diagnose and remediate infrastructure issues. It connects to your devices via SSH, analyzes problems using Claude AI, and sends diagnostic reports to administrators via WhatsApp for approval before applying fixes.
 
 ### How it works
 
 ```
-Alert (Zabbix/WhatsApp) → Support Agent (Router) → Specialist Agent → SSH Diagnosis → WhatsApp Approval → Auto-Remediation
+Alert (Zabbix/WhatsApp) -> Support Agent (Router) -> Specialist Agent -> SSH Diagnosis -> WhatsApp Approval -> Auto-Remediation
 ```
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 The system uses a **Multi-Agent Pipeline** with Claude's Native Tool Use (Function Calling):
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Entry Points                         │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────────┐    │
-│  │ WhatsApp │  │ Zabbix Webhook│  │ Web Dashboard  │    │
-│  │(Evolution)│  │              │  │  (React SPA)   │    │
-│  └────┬─────┘  └──────┬───────┘  └───────┬────────┘    │
-│       │               │                  │             │
-│       └───────────────┼──────────────────┘             │
-│                       ▼                                │
-│            ┌─────────────────────┐                     │
-│            │ 🧠 Support Agent   │  Classifier/Router   │
-│            │  search_device     │                      │
-│            │  list_devices      │                      │
-│            └────────┬───────────┘                      │
-│                     │                                  │
-│         ┌───────────┴───────────┐                      │
-│         ▼                       ▼                      │
-│  ┌──────────────┐     ┌──────────────┐                 │
-│  │🔧 MikroTik   │     │🐧 Linux      │                │
-│  │   Agent       │     │   Agent      │                │
-│  │ssh_mikrotik  │     │ssh_linux     │                 │
-│  │ping/trace    │     │ping/trace    │                 │
-│  └──────────────┘     └──────────────┘                 │
-│         │                       │                      │
-│         └───────────┬───────────┘                      │
-│                     ▼                                  │
-│          ┌────────────────────┐                        │
-│          │  SSH → Devices     │                        │
-│          │  (RouterOS/Linux)  │                        │
-│          └────────────────────┘                        │
-└─────────────────────────────────────────────────────────┘
++-----------------------------------------------------------+
+|                      Entry Points                         |
+|  +----------+  +--------------+  +----------------+      |
+|  | WhatsApp |  |Zabbix Webhook|  | Web Dashboard  |      |
+|  |(Evolution)|  |              |  |  (React SPA)   |      |
+|  +----+-----+  +------+-------+  +-------+--------+      |
+|       |               |                  |                |
+|       +---------------+------------------+                |
+|                       |                                   |
+|            +----------v----------+                        |
+|            | Support Agent       |  Classifier/Router     |
+|            |  search_device      |                        |
+|            |  list_devices       |                        |
+|            +----------+----------+                        |
+|                       |                                   |
+|           +-----------+-----------+                       |
+|           |                       |                       |
+|    +------v-------+     +--------v-----+                  |
+|    | MikroTik     |     | Linux        |                  |
+|    | Agent        |     | Agent        |                  |
+|    | ssh_mikrotik |     | ssh_linux    |                  |
+|    | ping/trace   |     | ping/trace   |                  |
+|    +--------------+     +--------------+                  |
+|           |                       |                       |
+|           +-----------+-----------+                       |
+|                       |                                   |
+|            +----------v---------+                         |
+|            |  SSH -> Devices    |                         |
+|            | (RouterOS/Linux)   |                         |
+|            +--------------------+                         |
++-----------------------------------------------------------+
 ```
 
 | Agent | Role | Tools |
 |-------|------|-------|
-| **Support Agent** | Classifier & Router — Identifies devices, classifies priority, routes to specialists | `search_device`, `list_devices` |
-| **MikroTik Agent** | Network specialist — RouterOS diagnostics and configuration | `ssh_mikrotik_exec`, `ping_host`, `traceroute_host` |
-| **Linux Agent** | Server specialist — System diagnostics, service management | `ssh_linux_exec`, `ping_host`, `traceroute_host` |
+| **Support Agent** | Classifier & Router | `search_device`, `list_devices` |
+| **MikroTik Agent** | Network specialist - RouterOS | `ssh_mikrotik_exec`, `ping_host`, `traceroute_host` |
+| **Linux Agent** | Server specialist | `ssh_linux_exec`, `ping_host`, `traceroute_host` |
 
 ---
 
-## ✨ Features
+## Features
 
-- 🤖 **Multi-Agent AI System** — Autonomous diagnosis with Claude AI (Anthropic)
-- 💬 **WhatsApp Integration** — Receive alerts and approve actions via WhatsApp (Evolution API)
-- 📊 **Zabbix Integration** — Automatic alert processing from Zabbix webhooks
-- 🖥️ **Real-time Dashboard** — React SPA with live AI streaming via Socket.IO
-- 🔒 **SSH Access** — Secure remote access to MikroTik and Linux devices
-- 🔐 **AES-256-GCM Encryption** — All credentials encrypted at rest
-- ✅ **Approval Workflow** — Human-in-the-loop approval before applying changes
-- 🗃️ **Task Tracking** — Full history of diagnostics, approvals, and executions
-- ⚡ **Streaming Responses** — Real-time AI response streaming in the dashboard
+- **Multi-Agent AI System** - Autonomous diagnosis with Claude AI (Anthropic)
+- **WhatsApp Integration** - Receive alerts and approve actions via WhatsApp (Evolution API)
+- **Zabbix Integration** - Automatic alert processing from Zabbix webhooks
+- **Real-time Dashboard** - React SPA with live AI streaming via Socket.IO
+- **SSH Access** - Secure remote access to MikroTik and Linux devices
+- **AES-256-GCM Encryption** - All credentials encrypted at rest
+- **Approval Workflow** - Human-in-the-loop approval before applying changes
+- **Task Tracking** - Full history of diagnostics, approvals, and executions
+- **Streaming Responses** - Real-time AI response streaming in the dashboard
 
 ---
 
-## 📦 Requirements
+## Requirements
 
 | Requirement | Version |
 |-------------|---------|
@@ -113,22 +111,22 @@ The system uses a **Multi-Agent Pipeline** with Claude's Native Tool Use (Functi
 | **Git** | >= 2.x |
 | **OS** | Ubuntu 20.04+ / Debian 11+ (recommended) |
 
-### External Services (Optional but recommended)
+### External Services
 
 | Service | Purpose | Required? |
 |---------|---------|-----------|
-| **Anthropic API Key** | Claude AI for agent intelligence | ✅ Yes |
-| **Evolution API** | WhatsApp messaging integration | ⬜ Optional |
-| **Zabbix** | Monitoring alert webhooks | ⬜ Optional |
+| **Anthropic API Key** | Claude AI for agent intelligence | Yes |
+| **Evolution API** | WhatsApp messaging integration | Optional |
+| **Zabbix** | Monitoring alert webhooks | Optional |
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/noc-agent-35.git
+git clone https://github.com/clfigueiredo/noc-agent-35.git
 cd noc-agent-35
 ```
 
@@ -152,7 +150,7 @@ cd ..
 cp .env.example .env
 ```
 
-Edit `.env` with your actual values (see [Configuration](#️-configuration) below).
+Edit `.env` with your actual values (see [Configuration](#configuration) below).
 
 ### 5. Setup the database
 
@@ -182,24 +180,23 @@ npm run dev
 npm start
 ```
 
-🎉 **Access the dashboard at:** `http://localhost:3000`
+Access the dashboard at: `http://localhost:3000`
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Copy `.env.example` to `.env` and configure:
 
 ```env
-# ─── Server ───────────────────────────────────────────
+# Server
 PORT=3000
 NODE_ENV=production
 
-# ─── Database ─────────────────────────────────────────
-# SQLite file path (relative to prisma/ directory)
+# Database - SQLite file path (relative to prisma/ directory)
 DATABASE_URL="file:./data/noc-agent.db"
 
-# ─── Security (CHANGE THESE!) ────────────────────────
+# Security (CHANGE THESE!)
 # 64-char hex string for AES-256-GCM encryption of SSH passwords
 ENCRYPTION_KEY=<generate-with: openssl rand -hex 32>
 # Secret for JWT token signing
@@ -207,22 +204,21 @@ JWT_SECRET=<generate-with: openssl rand -base64 32>
 # Password to login to the web dashboard
 DASHBOARD_PASSWORD=<your-strong-password>
 
-# ─── Claude AI (Anthropic) ───────────────────────────
+# Claude AI (Anthropic)
 CLAUDE_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxx
 CLAUDE_MODEL=claude-sonnet-4-20250514
 
-# ─── Evolution API (WhatsApp) ────────────────────────
+# Evolution API (WhatsApp)
 EVOLUTION_API_URL=http://localhost:8080
 EVOLUTION_API_KEY=<your-evolution-api-key>
 EVOLUTION_INSTANCE=noc-agent
 ADMIN_WHATSAPP=5511999999999
 
-# ─── Zabbix ──────────────────────────────────────────
+# Zabbix
 ZABBIX_WEBHOOK_TOKEN=<random-token-for-zabbix-webhook>
 ZABBIX_URL=http://zabbix.example.com
 
-# ─── Authorization ───────────────────────────────────
-# Comma-separated WhatsApp numbers allowed to interact
+# Authorization - Comma-separated WhatsApp numbers allowed to interact
 AUTHORIZED_NUMBERS=5511999999999,5511888888888
 ```
 
@@ -238,9 +234,9 @@ openssl rand -base64 32
 
 ---
 
-## 🗃 Database Setup
+## Database Setup
 
-NOC Agent 35 uses **SQLite** with **Prisma ORM** — no external database server needed!
+NOC Agent 35 uses **SQLite** with **Prisma ORM** - no external database server needed!
 
 ### Schema Overview
 
@@ -284,7 +280,7 @@ npm run db:push
 
 ---
 
-## ▶️ Running the Application
+## Running the Application
 
 ### Development Mode
 
@@ -315,7 +311,7 @@ The server serves the built frontend as static files from `frontend/dist/`.
 
 ---
 
-## 🚢 Production Deployment (PM2)
+## Production Deployment (PM2)
 
 ### Install PM2
 
@@ -331,7 +327,6 @@ module.exports = {
   apps: [{
     name: 'noc-agent',
     script: 'src/server.js',
-    node_args: '--experimental-modules',
     env: {
       NODE_ENV: 'production',
     },
@@ -370,7 +365,7 @@ pm2 list                    # List processes
 
 ---
 
-## 🔌 Integrations
+## Integrations
 
 ### WhatsApp (Evolution API)
 
@@ -403,7 +398,7 @@ pm2 list                    # List processes
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Public
 
@@ -434,84 +429,84 @@ pm2 list                    # List processes
 
 | Event | Direction | Description |
 |-------|-----------|-------------|
-| `chat:message` | Client → Server | Send message to AI agent |
-| `chat:chunk` | Server → Client | Streaming text response chunk |
-| `chat:tool` | Server → Client | Tool execution status (start/result) |
-| `chat:typing` | Server → Client | Agent is processing |
-| `chat:complete` | Server → Client | Response complete |
-| `chat:error` | Server → Client | Error occurred |
+| `chat:message` | Client -> Server | Send message to AI agent |
+| `chat:chunk` | Server -> Client | Streaming text response chunk |
+| `chat:tool` | Server -> Client | Tool execution status |
+| `chat:typing` | Server -> Client | Agent is processing |
+| `chat:complete` | Server -> Client | Response complete |
+| `chat:error` | Server -> Client | Error occurred |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 noc-agent-35/
-├── prisma/
-│   ├── schema.prisma          # Database schema (SQLite)
-│   └── data/                  # SQLite database file (git-ignored)
-├── src/
-│   ├── server.js              # Express server + Socket.IO
-│   ├── config/
-│   │   └── index.js           # Environment configuration
-│   ├── agents/
-│   │   ├── base-agent.js      # Base agent class (Claude SDK wrapper)
-│   │   ├── support-agent.js   # Classifier/Router agent
-│   │   ├── mikrotik-agent.js  # MikroTik specialist agent
-│   │   └── linux-agent.js     # Linux specialist agent
-│   ├── tools/
-│   │   ├── ssh-mikrotik.tool.js  # RouterOS SSH execution
-│   │   ├── ssh-linux.tool.js     # Linux SSH execution
-│   │   └── network.tool.js       # Ping & Traceroute
-│   ├── services/
-│   │   ├── device.service.js     # Device CRUD operations
-│   │   ├── task.service.js       # Task management
-│   │   ├── evolution.service.js  # WhatsApp messaging
-│   │   └── zabbix.service.js     # Zabbix webhook handling
-│   ├── routes/
-│   │   ├── auth.routes.js        # Authentication endpoints
-│   │   ├── device.routes.js      # Device management
-│   │   ├── settings.routes.js    # Settings management
-│   │   ├── task.routes.js        # Task management
-│   │   ├── chat.routes.js        # Chat session management
-│   │   └── webhook.routes.js     # Webhook receivers
-│   ├── middleware/
-│   │   ├── auth.middleware.js    # JWT authentication
-│   │   └── error.middleware.js   # Error handling
-│   ├── database/
-│   │   └── client.js            # Prisma client instance
-│   └── utils/
-│       ├── crypto.js            # AES-256-GCM encryption
-│       └── logger.js            # Winston logger
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx              # React app with routing
-│   │   ├── main.jsx             # Entry point
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx    # Overview dashboard
-│   │   │   ├── Chat.jsx         # AI chat interface
-│   │   │   ├── Devices.jsx      # Device management
-│   │   │   ├── Tasks.jsx        # Task tracking
-│   │   │   ├── Settings.jsx     # App configuration
-│   │   │   ├── Docs.jsx         # Integration documentation
-│   │   │   └── Login.jsx        # Authentication
-│   │   ├── components/
-│   │   │   ├── Layout.jsx       # App layout with sidebar
-│   │   │   ├── Modal.jsx        # Modal component
-│   │   │   └── StatusBadge.jsx  # Status indicator
-│   │   ├── lib/                 # Utilities & API client
-│   │   └── styles/              # CSS stylesheets
-│   ├── vite.config.js           # Vite configuration
-│   └── package.json
-├── .env.example                 # Environment template
-├── .gitignore
-├── package.json
-└── README.md
+ prisma/
+   ├── schema.prisma          # Database schema (SQLite)
+   └── data/                  # SQLite database file (git-ignored)
+ src/
+ server.js              # Express server + Socket.IO   
+   ├── config/
+   │   └── index.js           # Environment configuration
+   ├── agents/
+   │   ├── base-agent.js      # Base agent class (Claude SDK wrapper)
+   │   ├── support-agent.js   # Classifier/Router agent
+   │   ├── mikrotik-agent.js  # MikroTik specialist agent
+   │   └── linux-agent.js     # Linux specialist agent
+   ├── tools/
+   │   ├── ssh-mikrotik.tool.js  # RouterOS SSH execution
+   │   ├── ssh-linux.tool.js     # Linux SSH execution
+   │   └── network.tool.js       # Ping & Traceroute
+   ├── services/
+ device.service.js     # Device CRUD operations   │   
+   │   ├── task.service.js       # Task management
+   │   ├── evolution.service.js  # WhatsApp messaging
+   │   └── zabbix.service.js     # Zabbix webhook handling
+   ├── routes/
+   │   ├── auth.routes.js        # Authentication endpoints
+   │   ├── device.routes.js      # Device management
+   │   ├── settings.routes.js    # Settings management
+   │   ├── task.routes.js        # Task management
+   │   ├── chat.routes.js        # Chat session management
+   │   └── webhook.routes.js     # Webhook receivers
+   ├── middleware/
+ auth.middleware.js    # JWT authentication   │   ├
+   └── error.middleware.js   # Error handling   
+   ├── database/
+   │   └── client.js            # Prisma client instance
+   └── utils/
+       ├── crypto.js            # AES-256-GCM encryption
+       └── logger.js            # Winston logger
+ frontend/
+   ├── src/
+   │   ├── App.jsx              # React app with routing
+   │   ├── main.jsx             # Entry point
+   │   ├── pages/
+   │   │   ├── Dashboard.jsx    # Overview dashboard
+   │   │   ├── Chat.jsx         # AI chat interface
+   │   │   ├── Devices.jsx      # Device management
+   │   │   ├── Tasks.jsx        # Task tracking
+   │   │   ├── Settings.jsx     # App configuration
+   │   │   ├── Docs.jsx         # Integration docs
+   │   │   └── Login.jsx        # Authentication
+   │   ├── components/
+   │   │   ├── Layout.jsx       # App layout with sidebar
+   │   │   ├── Modal.jsx        # Modal component
+   │   │   └── StatusBadge.jsx  # Status indicator
+   │   ├── lib/                 # Utilities & API client
+   │   └── styles/              # CSS stylesheets
+   ├── vite.config.js           # Vite configuration
+   └── package.json
+ .env.example                 # Environment template
+ .gitignore
+ package.json
+ README.md
 ```
 
 ---
 
-## 🔒 Security
+## Security
 
 - **Credentials at Rest:** All SSH passwords and API keys stored in the database are encrypted with **AES-256-GCM**
 - **JWT Authentication:** Dashboard and API access requires a valid JWT token
@@ -519,7 +514,7 @@ noc-agent-35/
 - **Approval Workflow:** High-risk operations require explicit human approval via WhatsApp
 - **Authorized Numbers:** Only whitelisted phone numbers can interact via WhatsApp
 
-### ⚠️ Important Security Notes
+### Important Security Notes
 
 1. **Always change default credentials** in `.env` before deploying
 2. Generate strong, unique values for `ENCRYPTION_KEY`, `JWT_SECRET`, and `DASHBOARD_PASSWORD`
@@ -528,74 +523,56 @@ noc-agent-35/
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Common Issues
-
-<details>
-<summary><b>Database errors after pulling updates</b></summary>
+**Database errors after pulling updates:**
 
 ```bash
 npm run db:generate
 npm run db:push
 ```
-</details>
 
-<details>
-<summary><b>"Cannot find module @prisma/client"</b></summary>
+**Cannot find module @prisma/client:**
 
 ```bash
 npm install
 npm run db:generate
 ```
-</details>
 
-<details>
-<summary><b>Frontend shows blank page</b></summary>
+**Frontend shows blank page:**
 
-Make sure the frontend is built:
 ```bash
 cd frontend && npm run build && cd ..
 ```
-</details>
 
-<details>
-<summary><b>SSH connection fails to devices</b></summary>
+**SSH connection fails to devices:**
 
 1. Verify device credentials in the Devices page
 2. Check that SSH port (default 22) is reachable from the server
-3. Confirm the server's SSH client can reach the device:
-   ```bash
-   ssh -p <port> <user>@<hostname>
-   ```
-</details>
+3. Test: `ssh -p <port> <user>@<hostname>`
 
-<details>
-<summary><b>WhatsApp messages not being received</b></summary>
+**WhatsApp messages not being received:**
 
 1. Check Evolution API is running and accessible
 2. Verify webhook URL is configured correctly
 3. Check `AUTHORIZED_NUMBERS` includes the sending number
 4. Review logs: `pm2 logs noc-agent`
-</details>
 
-<details>
-<summary><b>Claude API errors</b></summary>
+**Claude API errors:**
 
 1. Verify `CLAUDE_API_KEY` is valid
 2. Check API quota/billing at [console.anthropic.com](https://console.anthropic.com)
 3. Ensure the model name in `CLAUDE_MODEL` is correct
-</details>
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -605,7 +582,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-<p align="center">
-  Built with ❤️ for NOC teams that want to sleep better at night.
-</p>
-]]>
+Built with love for NOC teams that want to sleep better at night.
