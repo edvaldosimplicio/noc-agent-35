@@ -20,6 +20,10 @@ WORKDIR /app
 
 RUN mkdir -p data
 
+ENV DATABASE_URL="file:./data/noc-agent.db"
+ENV NODE_ENV="production"
+ENV PORT=3000
+
 EXPOSE 3000
 
 CMD npx prisma db push --skip-generate && node src/server.js
