@@ -1,10 +1,10 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install backend dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy Prisma schema and generate
 COPY prisma ./prisma/
@@ -13,23 +13,15 @@ RUN npx prisma generate
 # Copy source
 COPY src ./src/
 
-# Build frontend
-FROM node:20-alpine AS frontend-build
+# Install and build frontend
+COPY frontend/package.json frontend/package-lock.json ./frontend/
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend ./
-RUN npm run production
+RUN npm run build
 
-# Final stage
-FROM node:20-alpine
+# Go back to app root
 WORKDIR /app
-
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/prisma ./prisma
-COPY --from=base /app/package.json ./
-COPY --from=base /app/src ./src/
-COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 # Create data directory for SQLite
 RUN mkdir -p data
