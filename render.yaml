@@ -1,16 +1,13 @@
 services:
   - type: web
     name: noc-agent-35
-    runtime: node
+    runtime: docker
     plan: free
-    buildCommand: npm install && npx prisma generate && cd frontend && npm install && npm run build
-    startCommand: node src/server.js
-    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: file:./data/noc-agent.db
+        value: "file:./data/noc-agent.db"
       - key: PORT
         value: 3000
       - key: ENCRYPTION_KEY
@@ -37,7 +34,3 @@ services:
         value: http://zabbix.example.com
       - key: AUTHORIZED_NUMBERS
         value: "5511999999999"
-    disk:
-      name: data
-      mountPath: /app/data
-      sizeGB: 1
