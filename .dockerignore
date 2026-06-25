@@ -1,0 +1,12 @@
+node_modules
+.env
+.env.local
+.env.production
+data/
+*.db
+frontend/node_modules
+frontend/dist
+.git
+.gitignore
+*.md
+LICENSE
