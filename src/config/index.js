@@ -8,9 +8,17 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || 'default-jwt-secret',
   dashboardPassword: process.env.DASHBOARD_PASSWORD || 'admin',
 
+  // AI Provider: "claude" or "gemini"
+  aiProvider: process.env.AI_PROVIDER || 'gemini',
+
   claude: {
     apiKey: process.env.CLAUDE_API_KEY || '',
     model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
+  },
+
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   },
 
   evolution: {

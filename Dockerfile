@@ -23,6 +23,7 @@ RUN mkdir -p data
 ENV DATABASE_URL="file:./data/noc-agent.db"
 ENV NODE_ENV="production"
 ENV PORT=3000
+ENV AI_PROVIDER="gemini"
 
 EXPOSE 3000
 
